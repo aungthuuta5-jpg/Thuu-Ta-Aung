@@ -2,7 +2,11 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisRequest, AnalysisResult } from "./types";
 
 export async function analyzeProducts(request: AnalysisRequest): Promise<AnalysisResult> {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const apiKey = request.apiKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("API key is missing. Please provide a valid Gemini API key.");
+  }
+  const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
     You are an expert "Value-for-Money Product Analyst" AI. 

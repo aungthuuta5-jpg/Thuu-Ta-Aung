@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Search, DollarSign, TrendingUp, AlertCircle, CheckCircle2, Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, DollarSign, TrendingUp, AlertCircle, CheckCircle2, Loader2, Sparkles, ArrowRight, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { analyzeProducts } from './services/geminiService';
 import { AnalysisResult } from './types';
@@ -17,6 +17,26 @@ export default function App() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+  const [showApiModal, setShowApiModal] = useState(!localStorage.getItem('gemini_api_key'));
+  const [tempApiKey, setTempApiKey] = useState('');
+
+  const saveApiKey = () => {
+    if (tempApiKey.trim()) {
+      localStorage.setItem('gemini_api_key', tempApiKey.trim());
+      setApiKey(tempApiKey.trim());
+      setShowApiModal(false);
+      setTempApiKey('');
+    }
+  };
+
+  const clearApiKey = () => {
+    localStorage.removeItem('gemini_api_key');
+    setApiKey('');
+    setTempApiKey('');
+    setShowApiModal(true);
+  };
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +52,7 @@ export default function App() {
     }, 3500);
 
     try {
-      const data = await analyzeProducts({ category, budget, language });
+      const data = await analyzeProducts({ category, budget, language, apiKey });
       setResult(data);
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
@@ -69,7 +89,15 @@ export default function App() {
         "Identifying key performance metrics...",
         "Calculating price-to-performance scores...",
         "Finalizing expert recommendations..."
-      ]
+      ],
+      apiModalTitle: "Enter your Gemini API key to enable analysis",
+      apiModalLink: "Get your key from Google AI Studio",
+      apiModalWarning: "Your key is stored only in your browser (localStorage) and never sent to any server.",
+      apiModalSave: "Save Key",
+      apiModalCancel: "Cancel",
+      apiModalChange: "Change API Key",
+      apiModalClear: "Clear Key",
+      apiModalPlaceholder: "AIzaSy..."
     },
     my: {
       title: "တန်ဖိုးဆန်းစစ်သူ",
@@ -97,7 +125,15 @@ export default function App() {
         "အဓိက စွမ်းဆောင်ရည် အချက်အလက်များကို ခွဲခြားနေသည်...",
         "ဈေးနှုန်းနှင့် စွမ်းဆောင်ရည် ရမှတ်များကို တွက်ချက်နေသည်...",
         "ကျွမ်းကျင်သူ အကြံပြုချက်များကို အချောသတ်နေသည်..."
-      ]
+      ],
+      apiModalTitle: "ဆန်းစစ်မှုစတင်ရန် သင့် Gemini API key ကို ထည့်ပါ",
+      apiModalLink: "Google AI Studio မှ key ရယူပါ",
+      apiModalWarning: "သင့် key ကို ဘရောက်ဆာတွင်သာ သိမ်းဆည်းထားပြီး မည်သည့်ဆာဗာသို့မျှ မပို့ပါ။",
+      apiModalSave: "Key သိမ်းမည်",
+      apiModalCancel: "ပယ်ဖျက်မည်",
+      apiModalChange: "API Key ပြောင်းမည်",
+      apiModalClear: "Key ဖျက်မည်",
+      apiModalPlaceholder: "AIzaSy..."
     }
   }[language];
 
@@ -130,6 +166,16 @@ export default function App() {
             <div className="hidden sm:flex items-center gap-1 text-sm font-medium text-slate-500">
               <Sparkles className="w-4 h-4" /> {t.subtitle}
             </div>
+            <button 
+              onClick={() => {
+                setTempApiKey(apiKey);
+                setShowApiModal(true);
+              }}
+              className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors bg-slate-100 hover:bg-indigo-50 px-2 py-1.5 rounded-md border border-slate-200"
+            >
+              <Key className="w-3 h-3" />
+              <span className="hidden sm:inline">{apiKey ? t.apiModalChange : 'Set API Key'}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -193,7 +239,7 @@ export default function App() {
             <div className="flex items-end">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !apiKey}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex flex-col items-center justify-center gap-1 group overflow-hidden"
               >
                 {loading ? (
@@ -339,6 +385,78 @@ export default function App() {
           {t.powered}
         </p>
       </footer>
+
+      {/* API Key Modal */}
+      <AnimatePresence>
+        {showApiModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+                  <Key className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight">{t.apiModalTitle}</h3>
+              </div>
+              
+              <p className="text-sm text-slate-600 mb-4">
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline flex items-center gap-1 inline-flex">
+                  {t.apiModalLink} <ArrowRight className="w-3 h-3" />
+                </a>
+              </p>
+              
+              <input
+                type="password"
+                value={tempApiKey}
+                onChange={(e) => setTempApiKey(e.target.value)}
+                placeholder={t.apiModalPlaceholder}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all mb-3 font-mono text-sm"
+                autoFocus
+              />
+              
+              <div className="flex items-start gap-2 mb-6 bg-amber-50 text-amber-800 p-3 rounded-lg border border-amber-100">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <p className="text-xs font-medium leading-relaxed">
+                  {t.apiModalWarning}
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                {apiKey && (
+                  <button 
+                    onClick={() => setShowApiModal(false)}
+                    className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    {t.apiModalCancel}
+                  </button>
+                )}
+                <button 
+                  onClick={saveApiKey}
+                  disabled={!tempApiKey.trim()}
+                  className="px-4 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg transition-colors shadow-md shadow-indigo-600/20"
+                >
+                  {t.apiModalSave}
+                </button>
+              </div>
+              
+              {apiKey && (
+                <div className="mt-4 pt-4 border-t border-slate-100 text-center">
+                  <button 
+                    onClick={clearApiKey}
+                    className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline"
+                  >
+                    {t.apiModalClear}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

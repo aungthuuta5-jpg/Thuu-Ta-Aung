@@ -16,4 +16,5 @@ export interface AnalysisRequest {
   category: string;
   budget: string;
   language: 'en' | 'my';
+  apiKey?: string;
 }
